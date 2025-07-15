@@ -7,13 +7,13 @@ unsigned long total = 0;
 unsigned long expe = 0;
 bool firstPacket = true;
 
-void onReceive(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData, int len) {
+void onReceive(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
     // Преобразуем полученные данные в число
     unsigned long currentNumber = strtoul((char *)incomingData, NULL, 10);
     
     Serial.print("Received from: ");
     for (int i = 0; i < 6; i++) {
-        Serial.printf("%02X", recv_info->src_addr[i]);
+        Serial.printf("%02X", mac_addr[i]);
         if (i < 5) Serial.print(":");
     }
     Serial.print(" | Data: ");
@@ -41,13 +41,13 @@ void onReceive(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData
             
             // Вычисляем количество ожидаемых пакетов
             expe = expe + currentNumber - lastReceivedNumber;
-            
+
             // Вычисляем процент потерь
             float lossPercentage = 0.0;
             if (expe > 0) {
                 lossPercentage = ((float)(total) / (float)expe) * 100.0;
             }
-            
+
             Serial.print(" | Expected: ");
             Serial.print(expe);
             Serial.print(" | Received: ");
@@ -62,7 +62,7 @@ void onReceive(const esp_now_recv_info_t *recv_info, const uint8_t *incomingData
             }
         }
     }
-    
+
     Serial.println();
 }
 
