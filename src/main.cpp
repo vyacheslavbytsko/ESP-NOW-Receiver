@@ -7,78 +7,42 @@ unsigned long total = 0;
 unsigned long expe = 0;
 bool firstPacket = true;
 
+struct Data {
+  uint16_t heartbeat;
+  float temperature;
+  float oxygen;
+  uint32_t timestamp;
+};
+
+Data outData;
+
 void onReceive(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
-    // Преобразуем полученные данные в число
-    unsigned long currentNumber = strtoul((char *)incomingData, NULL, 10);
-    
-    Serial.print("Received from: ");
-    for (int i = 0; i < 6; i++) {
-        Serial.printf("%02X", mac_addr[i]);
-        if (i < 5) Serial.print(":");
-    }
-    Serial.print(" | Data: ");
-    Serial.print(currentNumber);
-    
-    // Логика подсчета потерь
-    if (firstPacket) {
-        // Первый пакет - инициализация
-        lastReceivedNumber = currentNumber;
-        total = 1;
-        expe = 1;
-        firstPacket = false;
-        Serial.print(" | First packet");
-    } else {
-        // Проверяем, идут ли числа в обратную сторону
-        if (currentNumber < lastReceivedNumber) {
-            // Обнаружен обратный ход - сбрасываем счетчики
-            Serial.print(" | Reverse detected - resetting counters");
-            lastReceivedNumber = currentNumber;
-            total = 1;
-            expe = 1;
-        } else {
-            // Нормальная последовательность
-            total++;
-            
-            // Вычисляем количество ожидаемых пакетов
-            expe = expe + currentNumber - lastReceivedNumber;
+    if (len != 15) return;
 
-            // Вычисляем процент потерь
-            float lossPercentage = 0.0;
-            if (expe > 0) {
-                lossPercentage = ((float)(total) / (float)expe) * 100.0;
-            }
+    uint8_t i = incomingData[0];
 
-            Serial.print(" | Expected: ");
-            Serial.print(expe);
-            Serial.print(" | Received: ");
-            Serial.print(total);
-            Serial.print(" | RSSI: ");
-            Serial.print(lossPercentage, 2);
-            Serial.print("%");
-            lastReceivedNumber = currentNumber;
+    memcpy(&outData.timestamp,  &incomingData[1],  4); // uint32_t
+    memcpy(&outData.heartbeat,  &incomingData[5],  2); // uint16_t
+    memcpy(&outData.oxygen,     &incomingData[7],  4); // float
+    memcpy(&outData.temperature,&incomingData[11], 4); // float
 
-            if(total >= 100){
-                firstPacket = true;
-            }
-        }
-    }
-
-    Serial.println();
+    Serial.printf("Packet #%d | HR=%u | O2=%.2f | T=%.1f | ts=%lu\n",
+                  i, outData.heartbeat, outData.oxygen, outData.temperature, outData.timestamp);
 }
 
 void setup() {
     Serial.begin(115200);
+
+    // Включаем ESP NOW
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
-
     if (esp_now_init() != ESP_OK) {
         Serial.println("ESP-NOW init failed");
         return;
     }
 
+    // Регистрируем коллбэк на получение
     esp_now_register_recv_cb(onReceive);
 }
 
-void loop() {
-    delay(100); // Ничего не делаем, просто ждём
-}
+void loop() {}
