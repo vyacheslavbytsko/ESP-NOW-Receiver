@@ -14,20 +14,34 @@ struct Data {
   uint32_t timestamp;
 };
 
-Data outData;
+Data currentData;
+Data prevData;
 
 void onReceive(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
-    if (len != 15) return;
+    if (len != 29) return;
 
     uint8_t i = incomingData[0];
 
-    memcpy(&outData.timestamp,  &incomingData[1],  4); // uint32_t
-    memcpy(&outData.heartbeat,  &incomingData[5],  2); // uint16_t
-    memcpy(&outData.oxygen,     &incomingData[7],  4); // float
-    memcpy(&outData.temperature,&incomingData[11], 4); // float
+    // prevData
+    memcpy(&prevData.timestamp,   &incomingData[1],  4);
+    memcpy(&prevData.heartbeat,   &incomingData[5],  2);
+    memcpy(&prevData.oxygen,      &incomingData[7],  4);
+    memcpy(&prevData.temperature, &incomingData[11], 4);
 
-    Serial.printf("Packet #%d | HR=%u | O2=%.2f | T=%.1f | ts=%lu\n",
-                  i, outData.heartbeat, outData.oxygen, outData.temperature, outData.timestamp);
+    // currentData
+    memcpy(&currentData.timestamp,   &incomingData[15],  4);
+    memcpy(&currentData.heartbeat,   &incomingData[19], 2);
+    memcpy(&currentData.oxygen,      &incomingData[21], 4);
+    memcpy(&currentData.temperature, &incomingData[25], 4);
+
+    Serial.printf("Packet #%d\n", i);
+    Serial.printf("Prev  | HR=%u | O2=%.2f | T=%.1f | ts=%lu\n",
+                  prevData.heartbeat, prevData.oxygen,
+                  prevData.temperature, prevData.timestamp);
+
+    Serial.printf("Curr  | HR=%u | O2=%.2f | T=%.1f | ts=%lu\n",
+                  currentData.heartbeat, currentData.oxygen,
+                  currentData.temperature, currentData.timestamp);
 }
 
 void setup() {
